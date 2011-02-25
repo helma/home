@@ -1,0 +1,51 @@
+#!/bin/sh
+
+alias ll='ls -alF'
+alias la='ls -A'
+alias l='ls -CF'
+
+alias strela="ssh strela.in-silico.ch"
+alias univac="ssh univac.in-silico.ch"
+alias lazar="ssh -p 101 lazar.in-silico.ch"
+alias websites="ssh -p 102 www.in-silico.ch"
+alias lazar-dev="ssh -p 103 lazar-dev.in-silico.ch"
+alias desktop="ssh -p 104 desktop.in-silico.ch"
+#alias desktop="uxterm -fg white -bg black -class "Desktop" -e ssh -p 104 desktop.in-silico.ch &"
+alias toxcreate="ssh -p 106 toxcreate.org"
+alias ot-test="ssh -p 107 ot-test.in-silico.ch"
+alias sensitiv-dev="ssh -p 108 sensitiv-dev.in-silico.ch"
+alias ot-dev="ssh -p 111 ot-dev.in-silico.ch"
+alias sensitiv="ssh -p 110 sens-it-iv.org"
+
+alias webmail="pwclip webmail &; vimprobable https://webmail.in-silico.ch 2>/dev/null &!"
+alias proxmox="pwclip proxmox &; vimprobable https://strela.in-silico.ch 2>/dev/null &!"
+alias dkb="pwclip dkb &; vimprobable https://banking.dkb.de  2>/dev/null &!"
+alias coop="pwclip coop &; vimprobable https://onlinebanking.bankcoop.ch 2>/dev/null &!"
+
+#alias cups_conf='firefox http://localhost:631 &'
+alias wicd="wicd-curses"
+#alias uzbl="uzbl-browser 2>/dev/null &"
+alias win="VBoxManage startvm windows"
+alias curl-yaml="curl -H 'Accept:application/x-yaml'"
+alias curl-uri="curl -H 'Accept:text/uri-list'"
+alias curl-delete="curl -X DELETE"
+#alias u="uzbl-tabbed 2>/dev/null &"
+
+
+alias rdfxml2ntriples="rapper -i rdfxml -o ntriples"
+alias rdfxml2turtle="rapper -i rdfxml -o turtle"
+alias rdfxml2json="rapper -i rdfxml -o json"
+
+alias rgrep="grep -r --include=*rb"
+
+alias sr="surfraw -browser=uzbl-browser"
+alias v="vimprobable "
+
+alias audio-stop="killall mplayer"
+alias fm4="audio-stop; mplayer -playlist http://mp3stream1.apasf.apa.at:8000/listen.pls < /dev/null &> /dev/null &!"
+alias fm4-usb="mplayer -playlist http://mp3stream1.apasf.apa.at:8000/listen.pls -ao alsa:device=hw=1.0"
+alias radiox="audio-stop; mplayer http://mp3.radiox.ch/standard.ogg < /dev/null &> /dev/null &"
+
+alias t="task"
+alias untagged="task long `task tags|sed  '1,2d;/^$/,$d'|cut -f1 -d ' '|sed  's/\(.*\)/-\1/'|tr "\n" " "` pro:"
+alias today="task long due:today; task today"
