@@ -10,3 +10,4 @@ set shiftwidth=2  " Tabs under smart indent
 set autoindent
 set smarttab
 set expandtab
+set spelllang=en,de
