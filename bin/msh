@@ -1,0 +1,263 @@
+#!/usr/bin/env ruby
+
+require 'rubygems'
+require 'mail'
+require 'net/imap'
+require 'yaml'
+require "#{ENV["HOME"]}/.config/msh/config.rb"
+
+CACHE = "#{ENV["HOME"]}/.cache/msh"
+FOLDER = File.join CACHE, "folder"
+UID = File.join CACHE, "uid"
+INDEX = File.join CACHE, "index.yaml"
+MESSAGE = File.join CACHE, "tmp","message"
+
+class Msh
+
+  attr_reader :folder, :current
+  attr_accessor :imap
+
+  def initialize 
+    @folder = File.read(FOLDER).chomp
+    @uid = File.read(UID).chomp
+    @index = YAML.load_file INDEX
+    select @uid if @uid
+  end
+
+  def folders
+    login
+    puts @imap.list("","*").collect{|f| f.name}.join("\n")
+    logout
+  end
+
+  def cd(folder)
+    puts folder
+    @folder = folder
+    save
+  end
+
+  def ls
+    search ["ALL"]
+  end
+
+  def search(query)
+    login
+    @index = []
+    @imap.uid_search(query).each do |uid|
+      begin
+        envelope = @imap.uid_fetch(uid, "ENVELOPE").first.attr["ENVELOPE"]
+        if envelope.from.first.name
+          name = Mail::Encodings.value_decode envelope.from.first.name
+        else
+          name = envelope.from.first.mailbox+"@"+envelope.from.first.host
+        end
+        subject = Mail::Encodings.value_decode envelope.subject if envelope.subject
+        @index << {
+          :uid => uid,
+          :name => name,
+          :message_id => envelope.message_id.sub(/^</,'').sub(/>$/,''),
+          :subject => subject,
+          :date => envelope.date.split(/\s+/)[1..3].join(" ")
+        }
+        select uid
+        fprint
+      rescue => e
+        puts e.message
+      end
+    end
+    logout
+    @uid = @index.first[:uid]
+    save
+  end
+
+  # display cached index
+  def ll
+    puts @folder
+    c = @current
+    @index.each{|m| @current = m; fprint}
+    @current = c
+  end
+
+  # view message
+  def view(uid=nil)
+    mail = Mail.read(cache(uid))
+    message = "From: #{mail.from}\n"
+    message += "To: #{mail.to.join(", ")}\n" if mail.to
+    message += "Cc: #{mail.cc.join(", ")}\n" if mail.cc
+    message += "Subject: #{mail.subject}\n\n\n" 
+    message += body(mail)
+    puts message.gsub(//,'')
+  end
+
+  def cp(folder,uid=nil)
+    select uid if uid
+    login
+    @imap.uid_copy(@current[:uid], folder)
+    puts "\"#{@current[:subject]}\" copied to #{folder}."
+    logout
+  end
+
+  def mv(folder,uid=nil)
+    select uid if uid
+    login
+    @imap.uid_copy(@current[:uid], folder)
+    @imap.uid_store(@current[:uid], "+FLAGS", [:Deleted])
+    @imap.expunge
+    puts "\"#{@current[:subject]}\" moved to #{folder}."
+    logout
+    remove_current
+  end
+
+  def purge
+    login
+    delete_files "Trash"
+    delete_files "Auto-Train/Trained/Ham"
+    delete_files "Auto-Train/Trained/Spam"
+    @imap.expunge
+    logout
+  end
+
+  # save attachments
+  def detach(uid=nil)
+    mail = Mail.read(cache(uid))
+    if mail.multipart?
+      mail.parts.each do |part|
+          case part.content_type
+          when /text\/plain/
+          when /text\/html/
+          else
+            File.open(File.join(DOWNLOAD,part.content_type_parameters['name']),"w+" ) {|f| f.puts part.decode_body} unless part.multipart?
+          end
+      end
+    end
+  end
+
+  def attach(file)
+    mail = Mail.read_from_string(File.read MESSAGE)
+    mail.add_file file
+    File.open(MESSAGE,"w+"){|f| f.puts mail.to_s}
+  end
+
+  def send
+    system "ssmtp -au #{USER} -ap #{PASSWORD} -t < #{MESSAGE} && rm #{MESSAGE}"
+  end
+
+  def compose
+    File.open(MESSAGE,"w+"){|f| f.puts "To: \nCc: helma@in-silico.ch\nSubject: \n\n\n"}
+    system("xterm -e \"vim -f -c 'set filetype=mail' -c 'set spell' -c 'map s :w<CR>:!msh send<CR>:q<CR>' #{MESSAGE}\" &")
+  end
+
+  def reply(uid=nil)
+    mail = Mail.read(cache(uid))
+    to = mail.from.join(', ') unless mail.reply_to and to = mail.reply_to.join(', ')
+    message = "To: #{to}\n"
+    cc = ["helma@in-silico.ch"]
+    cc += mail.to - ADDRESSES
+    cc += mail.cc if mail.cc
+    message += "Cc: #{cc.join(", ")}\n" unless cc.empty?
+    message += "Subject: Re: #{mail.subject}\n\n\n" 
+    message += body(mail).gsub(/^(.*)/,'> \1')
+    File.open(MESSAGE,"w+"){|f| f.puts message}
+    system("xterm -e \"vim -f -c 'set filetype=mail' -c 'set spell' -c 'map s :w<CR>:!msh send<CR>:q<CR>' #{MESSAGE}\" &")
+  end
+
+  private
+
+  def login 
+    @imap = Net::IMAP.new SERVER,PORT,SSL
+    @imap.login USER,PASSWORD
+    @imap.select @folder
+  end
+
+  def logout
+    @imap.logout
+  end
+
+  def save
+    File.open(INDEX,'w+'){|f| f.print @index.to_yaml}
+    File.open(UID,'w+'){|f| f.print @uid}
+    File.open(FOLDER,'w+'){|f| f.print @folder}
+  end
+
+  def body(mail)
+    body = ''
+    if mail.multipart?
+      mail.parts.each do |part|
+        if part.multipart?
+          part.parts.each do |p|
+            body += p.body.decoded + "\n\n" if p.content_type.match(/text\/plain/)
+          end
+        else
+          case part.content_type
+          when /text\/plain/
+            body += part.body.decoded + "\n\n"
+          else
+            body += "Attachment: " + part.content_type_parameters['name'] + "\n" if part.content_type_parameters['name']
+          end
+        end
+      end
+    else
+      body += mail.body.decoded + "\n"
+    end
+    body.gsub(//,'')
+  end
+
+  def select(uid)
+    @uid = uid
+    save
+    @current = @index.collect{|i| i if i[:uid].to_s == @uid.to_s}.compact.first
+  end
+
+  def fprint
+    puts "%-6s%-13s%-20.20s  #{@current[:subject]}" % [@current[:uid],@current[:date],@current[:name]]
+  end
+
+  def cache(uid=nil)
+    select uid if uid
+    file = File.join CACHE,@current[:message_id]
+    unless File.exists? file
+      login
+      File.open(file,"w+"){|f| f.puts @imap.uid_fetch(@current[:uid], "RFC822")[0].attr["RFC822"]}
+      logout
+    end
+    file
+  end
+
+  def remove_current
+    i = @index.index(@current)
+    @index.delete @current
+    if @index.empty?
+      puts "No messages to process."
+    else
+      select @index[i][:uid]
+      fprint 
+    end
+    save
+  end
+
+  def delete_files(folder)
+    puts folder
+    @imap.select folder
+    @imap.uid_search("ALL").each { |uid|
+      @imap.uid_store(uid, "+FLAGS", [:Deleted]);
+      puts "#{uid} deleted" }
+  end
+
+end
+
+mail = Msh.new
+command = ARGV.shift
+begin
+  if ARGV.empty?
+    eval "mail.#{command}"
+  else
+    arg = ARGV.shift
+    if ARGV.empty?
+      eval "mail.#{command}(\"#{arg}\")"
+    else
+      ARGV.each { |a| eval "mail.#{command}(\"#{arg}\",\"#{a}\")" }
+    end
+  end
+rescue => e
+  puts e.message
+end

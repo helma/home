@@ -1,0 +1,10 @@
+#!/usr/bin/env ruby
+require 'fileutils'
+
+TRASH = File.join ENV['HOME'], "/.trash"
+FileUtils.mkdir_p(TRASH)
+ARGV.each do |file|
+	trash_file = File.join TRASH, File.basename(file)
+	FileUtils.rm_rf(trash_file)
+	FileUtils.mv(file,trash_file)
+end

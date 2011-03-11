@@ -1,0 +1,2 @@
+#!/bin/sh
+cat $HOME/.ssh/id_rsa.pub | ssh -p $2 $1 'cat >> .ssh/authorized_keys'
