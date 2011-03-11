@@ -1,4 +1,4 @@
 #!/bin/sh
 
-apt-get install zsh screen vim
+apt-get install zsh screen vim git-core
 chsh -s `which zsh`

@@ -1,0 +1,6 @@
+#!/bin/sh
+
+cd
+git clone http://github.com/opentox/install
+cd install
+./install

@@ -1,0 +1,8 @@
+#!/bin/sh
+
+cd /var/www/opentox
+for dir in *
+do
+  echo $dir
+  (cd $dir; exec git $*)
+done
