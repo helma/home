@@ -1,6 +1,6 @@
 source $HOME/.aliasrc
 PROMPT="%F{green}%~%f%# "
-RPROMPT="%F{blue}%n@%m%f"
+RPROMPT="%F{blue}%n%f@%F{red}%m%f"
 if [[ -o login ]]; then
 else
   echo -ne "\033]12;red\007" # set prompt

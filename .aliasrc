@@ -44,7 +44,8 @@ alias untagged="task long `task tags|sed  '1,2d;/^$/,$d'|cut -f1 -d ' '|sed  's/
 alias today="task long due:today; task today"
 
 # mail
-alias v="less =(msh view $*)"
+#v() { less =(msh view "$*") }
+alias v="msh view"
 alias m="msh compose"
 alias a="msh mv Archive"
 alias p="msh mv Pending"
