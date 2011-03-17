@@ -1,3 +1,3 @@
 #!/bin/bash
 
-sudo kill `cat /opt/nginx/logs/nginx.pid`
+kill `cat /opt/nginx/logs/nginx.pid`
