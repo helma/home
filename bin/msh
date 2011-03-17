@@ -44,6 +44,7 @@ class Msh
     login
     @index = []
     @imap.uid_search(query).each do |uid|
+      @uid = uid if @index.empty?
       begin
         envelope = @imap.uid_fetch(uid, "ENVELOPE").first.attr["ENVELOPE"]
         if envelope.from.first.name
@@ -52,21 +53,20 @@ class Msh
           name = envelope.from.first.mailbox+"@"+envelope.from.first.host
         end
         subject = Mail::Encodings.value_decode envelope.subject if envelope.subject
-        @index << {
+        @current = {
           :uid => uid,
           :name => name,
           :message_id => envelope.message_id.sub(/^</,'').sub(/>$/,''),
           :subject => subject,
           :date => envelope.date.split(/\s+/)[1..3].join(" ")
         }
-        select uid
+        @index << @current
         fprint
       rescue => e
         puts e.message
       end
     end
     logout
-    @uid = @index.first[:uid]
     save
   end
 
@@ -78,15 +78,20 @@ class Msh
     @current = c
   end
 
+  def uids
+    @index.each{|m| puts m[:uid]}
+  end
+
   # view message
   def view(uid=nil)
     mail = Mail.read(cache(uid))
-    message = "From: #{mail.from}\n"
-    message += "To: #{mail.to.join(", ")}\n" if mail.to
-    message += "Cc: #{mail.cc.join(", ")}\n" if mail.cc
-    message += "Subject: #{mail.subject}\n\n\n" 
-    message += body(mail)
-    puts message.gsub(//,'')
+    message =  "\033[32mFrom:\033[0m #{mail.from}\n"
+    message += "\033[32mTo:\033[0m #{mail.to.join(", ")}\n" if mail.to
+    message += "\033[32mCc:\033[0m #{mail.cc.join(", ")}\n" if mail.cc
+    message += "\033[32mSubject: \033[33m#{mail.subject}\033[0m\n\n\n" 
+    message += body(mail).gsub(//,'').gsub(/^(>.*)$/){|n| "\033[36m#{n}\033[0m"}
+    puts message
+    #`echo #{message}|less -r`
   end
 
   def cp(folder,uid=nil)
@@ -209,7 +214,9 @@ class Msh
   end
 
   def fprint
+    print "\033[33m" if @current[:uid].to_s == @uid.to_s
     puts "%-6s%-13s%-20.20s  #{@current[:subject]}" % [@current[:uid],@current[:date],@current[:name]]
+    print "\033[0m" if @current[:uid].to_s == @uid.to_s
   end
 
   def cache(uid=nil)

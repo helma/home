@@ -42,6 +42,7 @@ alias radiox="audio-stop; mplayer http://mp3.radiox.ch/standard.ogg < /dev/null 
 alias t="task"
 alias untagged="task long `task tags|sed  '1,2d;/^$/,$d'|cut -f1 -d ' '|sed  's/\(.*\)/-\1/'|tr "\n" " "` pro:"
 alias today="task long due:today; task today"
+alias week="task long due:eow; task week"
 
 # mail
 #v() { less =(msh view "$*") }
