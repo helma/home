@@ -31,7 +31,7 @@ alias rdf2json="rapper -i rdfxml -o json"
 alias rgrep="grep -r --include=*rb"
 
 alias sr="surfraw -browser=$BROWSER"
-alias w="$BROWSER" #"$1" 2>/dev/null &! }
+w() { $BROWSER "$*" 2>/dev/null &! }
 alias f="firefox $1 2>/dev/null &!"
 
 alias audio-stop="killall mplayer"
@@ -45,8 +45,8 @@ alias today="task long due:today; task today"
 alias week="task long due:eow; task week"
 
 # mail
-#v() { less =(msh view "$*") }
-alias v="msh view"
+v() { less =(msh view "$*") }
+#alias v="msh view"
 alias m="msh compose"
 alias a="msh mv Archive"
 alias p="msh mv Pending"
@@ -65,7 +65,10 @@ alias L="less =(msh ll)"
 alias -s pdf=zathura
 alias -s doc=ooffice
 alias -s docx=ooffice
+alias -s odt=ooffice
 alias -s ppt=ooffice
 alias -s pptx=ooffice
+alias -s xls=ooffice
+alias -s xlsx=ooffice
 alias -s png=display
 alias -s html=vimprobable

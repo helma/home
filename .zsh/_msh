@@ -1,0 +1,17 @@
+#compdef msh
+
+msh_file=`which msh`
+
+if (( $CURRENT > 2 )); then
+  cmd=$words[2]
+  if [[ $cmd = 'cd' ]]; then
+    cmdlist=( INBOX Archive Errors Pending Sent Trash )
+
+  else
+    cmdlist=(`msh uids`)
+  fi
+else
+  cmdlist=(`sed '/private/,$d' $msh_file|grep def|grep -v initialize|cut -f1 -d '('`)
+fi
+
+compadd -a cmdlist

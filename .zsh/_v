@@ -1,0 +1,4 @@
+#compdef v
+
+cmdlist=(`msh uids`)
+compadd -a cmdlist

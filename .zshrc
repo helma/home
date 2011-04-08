@@ -33,3 +33,4 @@ bindkey -M vicmd '^r' history-incremental-search-backward
 setopt extendedglob
 
 hash -d ot=/var/www/opentox
+
