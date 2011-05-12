@@ -38,11 +38,13 @@ alias audio-stop="killall mplayer"
 alias fm4="audio-stop; mplayer -playlist http://mp3stream1.apasf.apa.at:8000/listen.pls < /dev/null &> /dev/null &!"
 alias fm4-usb="mplayer -playlist http://mp3stream1.apasf.apa.at:8000/listen.pls -ao alsa:device=hw=1.0"
 alias radiox="audio-stop; mplayer http://mp3.radiox.ch/standard.ogg < /dev/null &> /dev/null &!"
+alias radio1="audio-stop; mplayer -playlist http://www.bbc.co.uk/radio/listen/live/r1.asx < /dev/null &> /dev/null &!"
+alias radio1x="audio-stop; mplayer -playlist http://www.bbc.co.uk/radio/listen/live/r1x.asx < /dev/null &> /dev/null &!"
 
 alias t="task"
 alias untagged="task long `task tags|sed  '1,2d;/^$/,$d'|cut -f1 -d ' '|sed  's/\(.*\)/-\1/'|tr "\n" " "` pro:"
-alias today="task long due:today; task today"
-alias week="task long due:eow; task week"
+alias today="task long due:today; task overdue; task long pri:H"
+alias week="task long due:eow; task overdue; task long pri:H; task long pri:M"
 
 # mail
 v() { less =(msh view "$*") }
@@ -72,3 +74,35 @@ alias -s xls=ooffice
 alias -s xlsx=ooffice
 alias -s png=display
 alias -s html=vimprobable
+
+# Load server config
+otconfig() {
+  source ~/.opentox-ui.sh
+}
+
+# Start the server
+otstart() {
+  otkill
+  sudo bash -c "source ~/.opentox-ui.sh; nohup redis-server ~/opentox-ruby/redis-2.2.2/redis.conf >/dev/null 2>&1 &"
+  sudo bash -c "source ~/.opentox-ui.sh; nohup nginx -c ~/opentox-ruby/nginx/conf/nginx.conf >/dev/null 2>&1 &"
+  sleep 2
+  if ! pgrep nginx>/dev/null 2>&1; then echo "Failed to start nginx."; fi
+  if ! pgrep redis-server>/dev/null 2>&1; then echo "Failed to start redis."; fi
+}
+
+# Display log
+alias otless='less ~/.opentox/log/production.log'
+
+# Tail log
+alias ottail='tail -f ~/.opentox/log/production.log'
+
+# Reload the server
+otreload() {
+  sudo bash -c "source ~/.opentox-ui.sh; nginx -s reload"
+}
+
+# Kill the server
+otkill() {
+  sudo killall nginx >/dev/null 2>&1
+  sudo bash -c "source ~/.opentox-ui.sh; redis-cli shutdown >/dev/null 2>&1"
+}

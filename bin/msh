@@ -4,6 +4,7 @@ require 'rubygems'
 require 'mail'
 require 'net/imap'
 require 'yaml'
+require 'colorize'
 require "#{ENV["HOME"]}/.config/msh/config.rb"
 
 CACHE = "#{ENV["HOME"]}/.cache/msh"
@@ -108,7 +109,7 @@ class Msh
     @imap.uid_copy(@current[:uid], folder)
     @imap.uid_store(@current[:uid], "+FLAGS", [:Deleted])
     @imap.expunge
-    puts "\"#{@current[:subject]}\" moved to #{folder}."
+    puts "\"#{@current[:subject]}\" moved to #{folder}.".green
     logout
     remove_current
   end
@@ -220,7 +221,7 @@ class Msh
   end
 
   def cache(uid=nil)
-    select uid if uid
+    select uid unless uid.nil? or uid.empty?
     file = File.join CACHE,@current[:message_id]
     unless File.exists? file
       login
@@ -235,8 +236,11 @@ class Msh
     @index.delete @current
     if @index.empty?
       puts "No messages to process."
-    else
+    elsif @index[i][:uid]
       select @index[i][:uid]
+      fprint 
+    else 
+      select @index[i-1][:uid]
       fprint 
     end
     save

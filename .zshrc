@@ -1,4 +1,5 @@
 source $HOME/.aliasrc
+source $HOME/.opentox-ui.sh
 PROMPT="%F{green}%~%f%# "
 RPROMPT="%F{blue}%n%f@%F{red}%m%f"
 if [[ -o login ]]; then
