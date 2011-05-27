@@ -121,10 +121,8 @@ class Msh
   end
 
   def send
-    pid = fork { puts "forked"}
+    pid = fork { system "ssmtp -au #{USER} -ap #{PASSWORD} -t < #{MESSAGE} && rm #{MESSAGE}" }
     Process.detach pid
-    #system "ssmtp -au #{USER} -ap #{PASSWORD} -t < #{MESSAGE} && rm #{MESSAGE}"
-    puts "return"
   end
 
   def compose

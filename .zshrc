@@ -1,7 +1,11 @@
 source $HOME/.aliasrc
 source $HOME/.opentox-ui.sh
 
-PROMPT="%F{green}%~%f%# "
+if [ `hostname` = 'zx81' ]; then
+  PROMPT="%F{green}%~%f%# "
+else
+  PROMPT="%F{red}%~%f%# "
+fi
 RPROMPT="%F{blue}%n%f@%F{red}%m%f"
 if [[ -o login ]]; then
 else
