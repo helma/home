@@ -1,0 +1,163 @@
+#!/usr/bin/env ruby
+
+require 'rubygems'
+require 'ftools'
+require 'mail'
+require "notmuch"
+require 'yaml'
+require 'colorize'
+require "#{ENV["HOME"]}/.msh/config.rb"
+
+
+CACHE = "#{ENV["HOME"]}/.msh"
+FOLDER = File.join CACHE, "folder"
+ID = File.join CACHE, "id"
+INDEX = File.join CACHE, "index.yaml"
+MESSAGE = File.join CACHE, "message"
+
+class Msh
+
+  attr_accessor :db
+
+  def initialize 
+    @folder = File.read(FOLDER).chomp
+    @id = File.read(ID).chomp.to_i
+    @index = YAML.load_file INDEX
+    `notmuch new`
+    @db = Notmuch::Database.open("/home/ch/mail",{:mode => Notmuch::MODE_READ_WRITE})
+  end
+
+  def folders
+    puts Dir[File.join MAILDIR, "*"].collect{|d| File.basename(d)}.join("\n")
+  end
+
+  def cd(folder="INBOX")
+    @folder = folder
+    search "folder:#{folder}"
+    puts "#{folder} (#{@index.size})"
+  end
+
+  def ls
+    @index.each do |m|
+      if @index.index(m) == @id
+        puts "%-5s%-22s%-25.25s    #{m[:subject]}".yellow % [@index.index(m),m[:date] ,m[:from]]
+      else
+        puts "%-5s%-22s%-25.25s    #{m[:subject]}" % [@index.index(m),m[:date] ,m[:from]]
+      end
+    end
+  end
+
+  def search(query)
+    @index = @db.query(query).search_messages.collect do |m|
+      { :file => m.filename, 
+        :id => m.message_id,
+        :date => Time.at(m.date).strftime("%a, %d %b %H:%M"), 
+        :from => m["From"], 
+        :subject => m["Subject"] }
+      end.reverse
+    @id = 0
+    save
+  end
+
+  # view message
+  def view(id=nil)
+    select id
+    if @index[@id][:file].match(/\/new\//)
+      file = @index[@id][:file].sub(/new/,'cur')+"S"
+      File.move @index[@id][:file], file
+      @index[@id][:file] = file
+      save
+    end
+    mail = `notmuch show id:#{@index[@id][:id]}`
+    mail = Mail.read @index[@id][:file]
+    puts "From:".green + " #{mail.from}\n" + "To:".green + " #{mail.to.join(", ")}\n" + "Cc:".green + " #{mail.cc.join(",") if mail.cc}\n" + "Subject:".green + " #{mail.subject}".yellow + "\n\n"
+    puts `notmuch show id:#{@index[@id][:id]} | sed -e '0,/body{/d;/body}/,$d;/part{/d;/part}/d' `
+  end
+
+  def cp(folder,id=nil)
+    select id 
+    File.copy @index[@id][:file], @index[@id][:file].sub(/#{@folder}/,folder)
+    `notmuch new`
+  end
+
+  def mv(folder,*ids)
+    ids = [@id] if ids.empty?
+    next_message = @index[@id+1]
+    ids.collect{|id| @index[id.to_i]}.each do |m|
+      File.move m[:file], m[:file].sub(/#{@folder}/,folder) 
+      @index.delete m
+    end
+    @id = 0 unless @index[@id]
+    save
+    ls
+  end
+
+  def purge
+    index = @index
+    id = @id
+    cd "Trash"
+    ls
+    puts "Delete Trash (y/n)?"
+    @index.each { |f| File.delete f[:file] } if gets.match(/y/i)
+    @index = index
+    @id = id
+    save
+  end
+
+  # save attachments
+  def detach(id=nil)
+    mail = Mail.read @index[@id][:file]
+    if mail.multipart?
+      mail.parts.each do |part|
+        File.open(File.join(DOWNLOAD,part.content_type_parameters['name']),"w+" ) {|f| f.puts part.decode_body} unless part.multipart? unless part.content.type.match(/plain|html/)
+      end
+    end
+  end
+
+  def attach(file)
+    mail = Mail.read_from_string(File.read MESSAGE)
+    mail.add_file file
+    File.open(MESSAGE,"w+"){|f| f.puts mail.to_s}
+  end
+
+  def send
+    pid = fork { puts "forked"}
+    Process.detach pid
+    #system "ssmtp -au #{USER} -ap #{PASSWORD} -t < #{MESSAGE} && rm #{MESSAGE}"
+    puts "return"
+  end
+
+  def compose
+    File.open(MESSAGE,"w+"){|f| f.puts "To: \nCc: helma@in-silico.ch\nSubject: \n\n\n"}
+    system("xterm -e \"vim -f -c 'set filetype=mail' -c 'set spell' -c 'map s :w<CR>:!msh send<CR>:q<CR>' #{MESSAGE}\" &")
+  end
+
+  def reply(id=nil)
+    select id
+    File.open(MESSAGE,"w+"){|f| f.puts `notmuch reply id:#{@index[@id][:id]}`}
+    system("xterm -e \"vim -f -c 'set filetype=mail' -c 'set spell' -c 'map s :w<CR>:!msh send<CR>:q<CR>' #{MESSAGE}\" &")
+  end
+
+  private
+
+  def save
+    File.open(INDEX,'w+'){|f| f.print @index.to_yaml}
+    File.open(ID,'w+'){|f| f.print @id}
+    File.open(FOLDER,'w+'){|f| f.print @folder}
+  end
+
+  def select(id)
+    @id = id.to_i if id and !id.empty?
+    save
+  end
+
+end
+
+mail = Msh.new
+command = ARGV.shift
+begin
+  eval "mail.#{command}(#{ARGV.collect{|a| "\"#{a}\""}.join(',')})" 
+rescue => e
+  puts e.message
+end
+mail.db.close

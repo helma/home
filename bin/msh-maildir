@@ -1,0 +1,217 @@
+#!/usr/bin/env ruby
+
+require 'rubygems'
+require 'ftools'
+require 'mail'
+require 'net/imap'
+require 'yaml'
+require 'colorize'
+require "#{ENV["HOME"]}/.config/msh/config.rb"
+
+
+CACHE = "#{ENV["HOME"]}/.cache/msh-maildir"
+FOLDER = File.join CACHE, "folder"
+ID = File.join CACHE, "id"
+INDEX = File.join CACHE, "index.yaml"
+MESSAGE = File.join CACHE, "message"
+
+class Msh
+
+  attr_reader :folder
+
+  def initialize 
+    @folder = File.read(FOLDER).chomp
+    @id = File.read(ID).chomp.to_i
+    @index = YAML.load_file INDEX
+  end
+
+  def folders
+    puts Dir[File.join MAILDIR, "*"].collect{|d| File.basename(d)}.join("\n")
+  end
+
+  def cd(folder="INBOX")
+    @folder = folder
+    #@index = `notmuch search --output=files folder:#{folder}`.split("\n")
+    @index = Dir[File.join MAILDIR, @folder, "cur" , "*"].sort_by{ |f| File.ctime(f) } + Dir[File.join MAILDIR, @folder, "new" , "*"].sort_by{ |f| File.ctime(f) }
+    @id = 0
+    save
+    puts "#{@folder} (#{@index.size})"
+  end
+
+  def ls
+    @index.each{ |m| fprint(m) }
+  end
+
+  def search(query)
+    #@index = `notmuch search --output=files #{query}`.split("\n")
+    @index = `grep -ril "#{query}" #{File.join MAILDIR, @folder}`.split("\n")
+    save
+    ls
+  end
+
+  # view message
+  def view(id=nil)
+    select id
+    if @index[@id].match(/\/new\//)
+      file = @index[@id].sub(/new/,'cur')+"S"
+      File.move @index[@id], file
+      @index[@id] = file
+      save
+    end
+    mail = Mail.read @index[@id]
+    message =  "\033[32mFrom:\033[0m #{mail.from}\n"
+    message += "\033[32mTo:\033[0m #{mail.to.join(", ")}\n" if mail.to
+    message += "\033[32mCc:\033[0m #{mail.cc.join(", ")}\n" if mail.cc
+    message += "\033[32mSubject: \033[33m#{mail.subject}\033[0m\n\n\n" 
+    message += body(mail).gsub(//,'').gsub(/^(>.*)$/){|n| "\033[36m#{n}\033[0m"}
+    puts message
+  end
+
+  def cp(folder,id=nil)
+    select id 
+    File.copy @index[@id], @index[@id].sub(/#{@folder}/,folder)
+  end
+
+  def mv(folder,*ids)
+    ids = [@id] if ids.empty?
+    next_message = @index[@id+1]
+    ids.collect{|id| @index[id.to_i]}.each do |m|
+      File.move m, m.sub(/#{@folder}/,folder) 
+      @index.delete m
+    end
+    @id = 0 unless @index[@id]
+    save
+    ls
+  end
+
+  def purge
+    index = @index
+    id = @id
+    cd "Trash"
+    ls
+    puts "Delete Trash (y/n)?"
+    @index.each { |f| File.delete f } if gets.match(/y/i)
+    @index = index
+    @id = id
+    save
+  end
+
+  # save attachments
+  def detach(id=nil)
+    mail = Mail.read @index[@id]
+    if mail.multipart?
+      mail.parts.each do |part|
+          case part.content_type
+          when /text\/plain/
+          when /text\/html/
+          else
+            File.open(File.join(DOWNLOAD,part.content_type_parameters['name']),"w+" ) {|f| f.puts part.decode_body} unless part.multipart?
+          end
+      end
+    end
+  end
+
+  def attach(file)
+    mail = Mail.read_from_string(File.read MESSAGE)
+    mail.add_file file
+    File.open(MESSAGE,"w+"){|f| f.puts mail.to_s}
+  end
+
+  def send
+    system "ssmtp -au #{USER} -ap #{PASSWORD} -t < #{MESSAGE} && rm #{MESSAGE}"
+  end
+
+  def compose
+    File.open(MESSAGE,"w+"){|f| f.puts "To: \nCc: helma@in-silico.ch\nSubject: \n\n\n"}
+    system("xterm -e \"vim -f -c 'set filetype=mail' -c 'set spell' -c 'map s :w<CR>:!msh send<CR>:q<CR>' #{MESSAGE}\" &")
+  end
+
+  def reply(id=nil)
+    select id
+    mail = Mail.read @index[@id]
+    to = mail.from.join(', ') unless mail.reply_to and to = mail.reply_to.join(', ')
+    message = "To: #{to}\n"
+    cc = ["helma@in-silico.ch"]
+    cc += mail.to - ADDRESSES
+    cc += mail.cc if mail.cc
+    message += "Cc: #{cc.join(", ")}\n" unless cc.empty?
+    message += "Subject: Re: #{mail.subject}\n\n\n" 
+    message += body(mail).gsub(/^(.*)/,'> \1')
+    File.open(MESSAGE,"w+"){|f| f.puts message}
+    system("xterm -e \"vim -f -c 'set filetype=mail' -c 'set spell' -c 'map s :w<CR>:!msh send<CR>:q<CR>' #{MESSAGE}\" &")
+  end
+
+  private
+
+  def save
+    File.open(INDEX,'w+'){|f| f.print @index.to_yaml}
+    File.open(ID,'w+'){|f| f.print @id}
+    File.open(FOLDER,'w+'){|f| f.print @folder}
+  end
+
+  def body(mail)
+    body = ''
+    if mail.multipart?
+      mail.parts.each do |part|
+        if part.multipart?
+          part.parts.each do |p|
+            body += p.body.decoded + "\n\n" if p.content_type.match(/text\/plain/)
+          end
+        else
+          case part.content_type
+          when /text\/plain/
+            body += part.body.decoded + "\n\n"
+          else
+            body += "Attachment: " + part.content_type_parameters['name'] + "\n" if part.content_type_parameters['name']
+          end
+        end
+      end
+    else
+      body += mail.body.decoded + "\n"
+    end
+    body.gsub(//,'')
+  end
+
+  def select(id)
+    @id = id.to_i if id and !id.empty?
+    save
+  end
+
+  def mgrep(i,m)
+    begin
+      Mail::Encodings.value_decode(`grep -i "^#{i}:" #{m}`.sub(/#{i}: /i,'').split("\n").first)
+    rescue
+      ""
+    end
+  end
+
+  def date(m)
+    mgrep("Date", m).sub(/\s+\d{2}:\d{2}:\d{2}\s.*$/,"").sub(/^.+,\s+/,'')
+  end
+
+  def from(m)
+    mgrep "From", m
+  end
+  
+  def subject(m)
+    mgrep("Subject", m)
+  end
+
+  def fprint(m=nil)
+    m = @index[@id] unless m
+    if @index.index(m) == @id
+      puts "%-5s%-14s%-25.25s    #{subject(m)}".yellow % [@index.index(m),date(m),from(m)]
+    else
+      puts "%-5s%-14s%-25.25s    #{subject(m)}" % [@index.index(m),date(m),from(m)]
+    end
+  end
+
+end
+
+mail = Msh.new
+command = ARGV.shift
+begin
+  eval "mail.#{command}(#{ARGV.collect{|a| "\"#{a}\""}.join(',')})" 
+rescue => e
+  puts e.message
+end

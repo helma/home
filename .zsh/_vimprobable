@@ -1,7 +1,4 @@
 #compdef vimprobable w
 
-cmdlist=( $(grep $words[2] $HOME/.config/vimprobable/history) )
-#|cut -f1 -d ' ' `)
-#cmdlist=(`cut -f1 -d ' ' $HOME/.config/vimprobable/history`)
-#|sed "/$words[2]/p"`)
+cmdlist=(`cut -f1 -d ' '  $HOME/.config/vimprobable/history|sed -e 's/http.*\/\///;s/\/.*$//'`)
 compadd -a cmdlist

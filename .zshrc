@@ -1,5 +1,6 @@
 source $HOME/.aliasrc
 source $HOME/.opentox-ui.sh
+
 PROMPT="%F{green}%~%f%# "
 RPROMPT="%F{blue}%n%f@%F{red}%m%f"
 if [[ -o login ]]; then
@@ -33,5 +34,5 @@ bindkey -M vicmd '^r' history-incremental-search-backward
 
 setopt extendedglob
 
-hash -d ot=/var/www/opentox
+hash -d ot=~/opentox-ruby/www/opentox
 

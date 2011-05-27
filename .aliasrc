@@ -47,19 +47,21 @@ alias today="task long due:today; task overdue; task long pri:H"
 alias week="task long due:eow; task overdue; task long pri:H; task long pri:M"
 
 # mail
-v() { less =(msh view "$*") }
-#alias v="msh view"
+#v() { less =(msh view "$*") }
+alias v="msh view"
 alias m="msh compose"
 alias a="msh mv Archive"
 alias p="msh mv Pending"
 alias d="msh mv Trash"
-alias ham="msh cp Auto-Train/Ham"
-alias spam="msh mv Auto-Train/Spam"
+alias ham="msh cp Auto-Train.Ham"
+alias spam="msh mv Auto-Train.Spam"
 alias r="msh reply"
 alias I="msh cd INBOX && msh ls"
 alias P="msh cd Pending && msh ls"
-S() { less =(msh cd Archive; msh search "$*") }
-alias L="less =(msh ll)"
+alias S="msh search"
+#S() { less =(msh cd Archive; msh search "$*") }
+#alias L="less =(msh ll)"
+alias L="msh ls"
 #alias mj="msh cd Junkmail && msh ls"
 
 #alias m="msh"
@@ -77,32 +79,51 @@ alias -s html=vimprobable
 
 # Load server config
 otconfig() {
-  source ~/.opentox-ui.sh
+  source $HOME/.opentox-ui.sh
 }
+
+# Update the development version
+otupdate() {
+  otconfig
+  cd $HOME/opentox-ruby/www/opentox
+  for d in `find -not -name "." -type d -maxdepth 1 2>/dev/null`; do echo $d ; cd $d ; git pull  ; echo ; cd - ;  done
+  cd opentox-ruby
+  rake install
+  LINK_DIR=`gem which opentox-ruby | sed 's/\/opentox-ruby.rb//'`
+  if ! [ -h $LINK_DIR ]; then
+    echo "Warning! Your lib $LINK_DIR is no symlink. Linking back for you..."
+    rm -rf "$LINK_DIR~"
+    mv "$LINK_DIR" "$LINK_DIR~" >>$LOG 2>&1
+    ln -sf $HOME/opentox-ruby/www/opentox/opentox-ruby/lib $GEM_LIB
+  fi
+  echo "Please execute 'otstart' to restart."
+}
+
 
 # Start the server
 otstart() {
   otkill
-  sudo bash -c "source ~/.opentox-ui.sh; nohup redis-server ~/opentox-ruby/redis-2.2.2/redis.conf >/dev/null 2>&1 &"
-  sudo bash -c "source ~/.opentox-ui.sh; nohup nginx -c ~/opentox-ruby/nginx/conf/nginx.conf >/dev/null 2>&1 &"
+  sleep 8
+  sudo bash -c "source $HOME/.opentox-ui.sh; nohup redis-server $HOME/opentox-ruby/redis-2.2.2/redis.conf >/dev/null 2>&1 &"
+  sudo bash -c "source $HOME/.opentox-ui.sh; nohup nginx -c $HOME/opentox-ruby/nginx/conf/nginx.conf >/dev/null 2>&1 &"
   sleep 2
   if ! pgrep nginx>/dev/null 2>&1; then echo "Failed to start nginx."; fi
   if ! pgrep redis-server>/dev/null 2>&1; then echo "Failed to start redis."; fi
 }
 
 # Display log
-alias otless='less ~/.opentox/log/production.log'
+alias otless='less $HOME/.opentox/log/production.log'
 
 # Tail log
-alias ottail='tail -f ~/.opentox/log/production.log'
+alias ottail='tail -f $HOME/.opentox/log/production.log'
 
 # Reload the server
 otreload() {
-  sudo bash -c "source ~/.opentox-ui.sh; nginx -s reload"
+  sudo bash -c "source $HOME/.opentox-ui.sh; nginx -s reload"
 }
 
 # Kill the server
 otkill() {
   sudo killall nginx >/dev/null 2>&1
-  sudo bash -c "source ~/.opentox-ui.sh; redis-cli shutdown >/dev/null 2>&1"
+  sudo bash -c "source $HOME/.opentox-ui.sh; redis-cli shutdown >/dev/null 2>&1"
 }
