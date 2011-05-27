@@ -17,8 +17,6 @@ alias sensitiv-dev="ssh -p 108 sensitiv-dev.in-silico.ch"
 alias ot-dev="ssh -p 111 ot-dev.in-silico.ch"
 alias sensitiv="ssh -p 110 sens-it-iv.org"
 
-alias wicd="wicd-curses"
-alias win="VBoxManage startvm windows"
 alias curl-yaml="curl -H 'Accept:application/x-yaml'"
 alias curl-uri="curl -H 'Accept:text/uri-list'"
 alias curl-delete="curl -X DELETE"
@@ -30,52 +28,59 @@ alias rdf2json="rapper -i rdfxml -o json"
 
 alias rgrep="grep -r --include=*rb"
 
-alias sr="surfraw -browser=$BROWSER"
-w() { $BROWSER "$*" 2>/dev/null &! }
-alias f="firefox $1 2>/dev/null &!"
+if [ `hostname` = 'zx81' ]; then
 
-alias audio-stop="killall mplayer"
-alias fm4="audio-stop; mplayer -playlist http://mp3stream1.apasf.apa.at:8000/listen.pls < /dev/null &> /dev/null &!"
-alias fm4-usb="mplayer -playlist http://mp3stream1.apasf.apa.at:8000/listen.pls -ao alsa:device=hw=1.0"
-alias radiox="audio-stop; mplayer http://mp3.radiox.ch/standard.ogg < /dev/null &> /dev/null &!"
-alias radio1="audio-stop; mplayer -playlist http://www.bbc.co.uk/radio/listen/live/r1.asx < /dev/null &> /dev/null &!"
-alias radio1x="audio-stop; mplayer -playlist http://www.bbc.co.uk/radio/listen/live/r1x.asx < /dev/null &> /dev/null &!"
+  alias wicd="wicd-curses"
+  alias win="VBoxManage startvm windows"
 
-alias t="task"
-alias untagged="task long `task tags|sed  '1,2d;/^$/,$d'|cut -f1 -d ' '|sed  's/\(.*\)/-\1/'|tr "\n" " "` pro:"
-alias today="task long due:today; task overdue; task long pri:H"
-alias week="task long due:eow; task overdue; task long pri:H; task long pri:M"
+  alias sr="surfraw -browser=$BROWSER"
 
-# mail
-#v() { less =(msh view "$*") }
-alias v="msh view"
-alias m="msh compose"
-alias a="msh mv Archive"
-alias p="msh mv Pending"
-alias d="msh mv Trash"
-alias ham="msh cp Auto-Train.Ham"
-alias spam="msh mv Auto-Train.Spam"
-alias r="msh reply"
-alias I="msh cd INBOX && msh ls"
-alias P="msh cd Pending && msh ls"
-alias S="msh search"
-#S() { less =(msh cd Archive; msh search "$*") }
-#alias L="less =(msh ll)"
-alias L="msh ls"
-#alias mj="msh cd Junkmail && msh ls"
+  w() { $BROWSER "$*" 2>/dev/null &! }
+  alias f="firefox $1 2>/dev/null &!"
 
-#alias m="msh"
+  alias audio-stop="killall mplayer"
+  alias fm4="audio-stop; mplayer -playlist http://mp3stream1.apasf.apa.at:8000/listen.pls < /dev/null &> /dev/null &!"
+  alias fm4-usb="mplayer -playlist http://mp3stream1.apasf.apa.at:8000/listen.pls -ao alsa:device=hw=1.0"
+  alias radiox="audio-stop; mplayer http://mp3.radiox.ch/standard.ogg < /dev/null &> /dev/null &!"
+  alias radio1="audio-stop; mplayer -playlist http://www.bbc.co.uk/radio/listen/live/r1.asx < /dev/null &> /dev/null &!"
+  alias radio1x="audio-stop; mplayer -playlist http://www.bbc.co.uk/radio/listen/live/r1x.asx < /dev/null &> /dev/null &!"
 
-alias -s pdf=zathura
-alias -s doc=ooffice
-alias -s docx=ooffice
-alias -s odt=ooffice
-alias -s ppt=ooffice
-alias -s pptx=ooffice
-alias -s xls=ooffice
-alias -s xlsx=ooffice
-alias -s png=display
-alias -s html=vimprobable
+  alias t="task"
+  alias untagged="task long `task tags|sed  '1,2d;/^$/,$d'|cut -f1 -d ' '|sed  's/\(.*\)/-\1/'|tr "\n" " "` pro:"
+  alias today="task long due:today; task overdue; task long pri:H"
+  alias week="task long due:eow; task overdue; task long pri:H; task long pri:M"
+
+  # mail
+  #v() { less =(msh view "$*") }
+  alias v="msh view"
+  alias m="msh compose"
+  alias a="msh mv Archive"
+  alias p="msh mv Pending"
+  alias d="msh mv Trash"
+  alias ham="msh cp Auto-Train.Ham"
+  alias spam="msh mv Auto-Train.Spam"
+  alias r="msh reply"
+  alias I="msh cd INBOX && msh ls"
+  alias P="msh cd Pending && msh ls"
+  alias S="msh search"
+  #S() { less =(msh cd Archive; msh search "$*") }
+  #alias L="less =(msh ll)"
+  alias L="msh ls"
+  #alias mj="msh cd Junkmail && msh ls"
+
+  #alias m="msh"
+
+  alias -s pdf=zathura
+  alias -s doc=ooffice
+  alias -s docx=ooffice
+  alias -s odt=ooffice
+  alias -s ppt=ooffice
+  alias -s pptx=ooffice
+  alias -s xls=ooffice
+  alias -s xlsx=ooffice
+  alias -s png=display
+  alias -s html=$BROSER
+fi
 
 # Load server config
 otconfig() {
