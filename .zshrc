@@ -4,7 +4,7 @@ source $HOME/.opentox-ui.sh
 if [ `hostname` = 'zx81' ]; then
   PROMPT="%F{green}%~%f%# "
 else
-  PROMPT="%F{red}%~%f%# "
+  PROMPT="%F{red}%~%#%f "
 fi
 RPROMPT="%F{blue}%n%f@%F{red}%m%f"
 if [[ -o login ]]; then
