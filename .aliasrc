@@ -49,10 +49,11 @@ if [ `hostname` = 'zx81' ]; then
   alias untagged="task long `task tags|sed  '1,2d;/^$/,$d'|cut -f1 -d ' '|sed  's/\(.*\)/-\1/'|tr "\n" " "` pro:"
   alias today="task long due:today; task overdue; task long pri:H"
   alias week="task long due:eow; task overdue; task long pri:H; task long pri:M"
+  alias next="task long due:eom; task overdue; task long pri:M; task long pri:L"
 
   # mail
-  #v() { less =(msh view "$*") }
-  alias v="msh view"
+  v() { less =(msh view "$*") }
+  #alias v="msh view"
   alias m="msh compose"
   alias a="msh mv Archive"
   alias p="msh mv Pending"
@@ -60,8 +61,10 @@ if [ `hostname` = 'zx81' ]; then
   alias ham="msh cp Auto-Train.Ham"
   alias spam="msh mv Auto-Train.Spam"
   alias r="msh reply"
-  alias I="msh cd INBOX && msh ls"
-  alias P="msh cd Pending && msh ls"
+  alias I="msh cd INBOX"
+  alias P="msh cd Pending"
+  #alias I="msh cd INBOX && msh ls"
+  #alias P="msh cd Pending && msh ls"
   alias S="msh search"
   #S() { less =(msh cd Archive; msh search "$*") }
   #alias L="less =(msh ll)"
@@ -108,7 +111,6 @@ otupdate() {
 # Start the server
 otstart() {
   otkill
-  sleep 8
   sudo bash -c "source $HOME/.opentox-ui.sh; nohup redis-server $HOME/opentox-ruby/redis-2.2.2/redis.conf >/dev/null 2>&1 &"
   sudo bash -c "source $HOME/.opentox-ui.sh; nohup nginx -c $HOME/opentox-ruby/nginx/conf/nginx.conf >/dev/null 2>&1 &"
   sleep 2
@@ -131,4 +133,6 @@ otreload() {
 otkill() {
   sudo killall nginx >/dev/null 2>&1
   sudo bash -c "source $HOME/.opentox-ui.sh; redis-cli shutdown >/dev/null 2>&1"
+  while ps ax | grep PassengerHelperAgent | grep -v grep >/dev/null 2>&1; do sleep 1; done
+  for p in `pgrep R 2>/dev/null`; do sudo kill -9 $p; done
 }

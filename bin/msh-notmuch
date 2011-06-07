@@ -34,7 +34,6 @@ class Msh
   def cd(folder="INBOX")
     @folder = folder
     search "folder:#{folder}"
-    puts "#{folder} (#{@index.size})"
   end
 
   def ls
@@ -48,30 +47,24 @@ class Msh
   end
 
   def search(query)
-    @index = @db.query(query).search_messages.collect do |m|
+    @index = @db.query(query).search_messages.sort_by{|m| [m.thread_id,m.date]}.collect do |m|
       { :file => m.filename, 
         :id => m.message_id,
         :date => Time.at(m.date).strftime("%a, %d %b %H:%M"), 
         :from => m["From"], 
         :subject => m["Subject"] }
-      end.reverse
+      end#.reverse
     @id = 0
     save
+    ls
   end
 
-  # view message
   def view(id=nil)
     select id
-    if @index[@id][:file].match(/\/new\//)
-      file = @index[@id][:file].sub(/new/,'cur')+"S"
-      File.move @index[@id][:file], file
-      @index[@id][:file] = file
-      save
-    end
     mail = `notmuch show id:#{@index[@id][:id]}`
     mail = Mail.read @index[@id][:file]
     puts "From:".green + " #{mail.from}\n" + "To:".green + " #{mail.to.join(", ")}\n" + "Cc:".green + " #{mail.cc.join(",") if mail.cc}\n" + "Subject:".green + " #{mail.subject}".yellow + "\n\n"
-    puts `notmuch show id:#{@index[@id][:id]} | sed -e '0,/body{/d;/body}/,$d;/part{/d;/part}/d' `
+    puts `notmuch show id:#{@index[@id][:id]} | sed -e '0,/body{/d;/body}/,$d;/part{/d;/part}/d;/attachment{/d;/attachment}/d' `
   end
 
   def cp(folder,id=nil)
@@ -104,12 +97,11 @@ class Msh
     save
   end
 
-  # save attachments
   def detach(id=nil)
     mail = Mail.read @index[@id][:file]
     if mail.multipart?
       mail.parts.each do |part|
-        File.open(File.join(DOWNLOAD,part.content_type_parameters['name']),"w+" ) {|f| f.puts part.decode_body} unless part.multipart? unless part.content.type.match(/plain|html/)
+        File.open(File.join(DOWNLOAD,part.content_type_parameters['name']),"w+" ) {|f| f.puts part.decode_body} unless part.multipart? unless part.content_type.match(/plain|html/)
       end
     end
   end
@@ -132,7 +124,7 @@ class Msh
 
   def reply(id=nil)
     select id
-    File.open(MESSAGE,"w+"){|f| f.puts `notmuch reply id:#{@index[@id][:id]}`}
+    File.open(MESSAGE,"w+"){|f| f.puts `notmuch reply id:#{@index[@id][:id]} | sed '/^To:/a\Bcc: helma@in-silico.ch'` }
     system("xterm -e \"vim -f -c 'set filetype=mail' -c 'set spell' -c 'map s :w<CR>:!msh send<CR>:q<CR>' #{MESSAGE}\" &")
   end
 
