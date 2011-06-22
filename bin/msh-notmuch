@@ -1,19 +1,26 @@
 #!/usr/bin/env ruby
 
 require 'rubygems'
-require 'ftools'
+require 'fileutils'
 require 'mail'
 require "notmuch"
 require 'yaml'
 require 'colorize'
-require "#{ENV["HOME"]}/.msh/config.rb"
 
+MAILDIR   = File.join ENV['HOME'], "mail"
+DOWNLOAD  = ENV['HOME']
 
 CACHE = "#{ENV["HOME"]}/.msh"
 FOLDER = File.join CACHE, "folder"
 ID = File.join CACHE, "id"
 INDEX = File.join CACHE, "index.yaml"
 MESSAGE = File.join CACHE, "message"
+
+class String
+  def utf8
+    self.encode("UTF-8", {:invalid => :replace, :undef => :replace})
+  end
+end
 
 class Msh
 
@@ -24,7 +31,6 @@ class Msh
     @id = File.read(ID).chomp.to_i
     @index = YAML.load_file INDEX
     `notmuch new`
-    @db = Notmuch::Database.open("/home/ch/mail",{:mode => Notmuch::MODE_READ_WRITE})
   end
 
   def folders
@@ -47,29 +53,35 @@ class Msh
   end
 
   def search(query)
-    @index = @db.query(query).search_messages.sort_by{|m| [m.thread_id,m.date]}.collect do |m|
-      { :file => m.filename, 
-        :id => m.message_id,
-        :date => Time.at(m.date).strftime("%a, %d %b %H:%M"), 
-        :from => m["From"], 
-        :subject => m["Subject"] }
-      end#.reverse
+    db = Notmuch::Database.open("/home/ch/mail",{:mode => Notmuch::MODE_READ_WRITE})
+    @index = db.query(query).search_messages.sort_by{|m| [m.thread_id,m.date]}.collect do |m|
+      { :file => m.filename.utf8, 
+        :id => m.message_id.utf8,
+        :to => m["To"].utf8,
+        :date => Time.at(m.date).strftime("%a, %d %b %H:%M").utf8, 
+        :from => m["From"].utf8, 
+        :cc => m["Cc"].utf8, 
+        :subject => m["Subject"].utf8 }
+      end
     @id = 0
+    db.close
     save
     ls
   end
 
   def view(id=nil)
     select id
-    mail = `notmuch show id:#{@index[@id][:id]}`
-    mail = Mail.read @index[@id][:file]
-    puts "From:".green + " #{mail.from}\n" + "To:".green + " #{mail.to.join(", ")}\n" + "Cc:".green + " #{mail.cc.join(",") if mail.cc}\n" + "Subject:".green + " #{mail.subject}".yellow + "\n\n"
-    puts `notmuch show id:#{@index[@id][:id]} | sed -e '0,/body{/d;/body}/,$d;/part{/d;/part}/d;/attachment{/d;/attachment}/d' `
+    mail = @index[@id]
+    puts "From: ".green + mail[:from]
+    puts "To: ".green + mail[:to]
+    puts "Cc: ".green + mail[:cc]
+    puts "Subject: ".green + mail[:subject].yellow + "\n\n"
+    puts `notmuch show id:'#{@index[@id][:id]}' | sed -e '0,/body{/d;/body}/,$d;/part{/d;/part}/d;/attachment{/d;/attachment}/d' `.utf8
   end
 
   def cp(folder,id=nil)
     select id 
-    File.copy @index[@id][:file], @index[@id][:file].sub(/#{@folder}/,folder)
+    FileUtils.cp @index[@id][:file], @index[@id][:file].sub(/#{@folder}/,folder)
     `notmuch new`
   end
 
@@ -77,7 +89,7 @@ class Msh
     ids = [@id] if ids.empty?
     next_message = @index[@id+1]
     ids.collect{|id| @index[id.to_i]}.each do |m|
-      File.move m[:file], m[:file].sub(/#{@folder}/,folder) 
+      FileUtils.move m[:file], m[:file].sub(/#{@folder}/,folder) 
       @index.delete m
     end
     @id = 0 unless @index[@id]
@@ -110,22 +122,25 @@ class Msh
     mail = Mail.read_from_string(File.read MESSAGE)
     mail.add_file file
     File.open(MESSAGE,"w+"){|f| f.puts mail.to_s}
+    `sed -i '/^To:/a\Bcc: helma@in-silico.ch' #{MESSAGE}` # reinsert Bcc: line (seems to be dropped by Mail)
   end
 
   def send
-    pid = fork { system "ssmtp -au #{USER} -ap #{PASSWORD} -t < #{MESSAGE} && rm #{MESSAGE}" }
-    Process.detach pid
+    FileUtils.cp MESSAGE, File.join(CACHE,"sent",`date`.chomp.gsub(/ /,'-'))
+    File.open(File.join(CACHE,"send.err"), "a+"){|f| f.puts File.join(CACHE,"sent",`date`.chomp.gsub(/ /,'-')) }
+    puts `ssmtp -t < #{MESSAGE} || echo "Mail not delivered!"|dmenu &`
+    #Process.spawn "ssmtp -v -t < #{MESSAGE} ", [:out, :err]=> [File.join(CACHE,"send.err"), "a+"]
   end
 
   def compose
-    File.open(MESSAGE,"w+"){|f| f.puts "To: \nCc: helma@in-silico.ch\nSubject: \n\n\n"}
-    system("xterm -e \"vim -f -c 'set filetype=mail' -c 'set spell' -c 'map s :w<CR>:!msh send<CR>:q<CR>' #{MESSAGE}\" &")
+    File.open(MESSAGE,"w+"){|f| f.puts "To: \nBcc: helma@in-silico.ch\nSubject: \n\n\n"}
+    edit
   end
 
   def reply(id=nil)
     select id
     File.open(MESSAGE,"w+"){|f| f.puts `notmuch reply id:#{@index[@id][:id]} | sed '/^To:/a\Bcc: helma@in-silico.ch'` }
-    system("xterm -e \"vim -f -c 'set filetype=mail' -c 'set spell' -c 'map s :w<CR>:!msh send<CR>:q<CR>' #{MESSAGE}\" &")
+    edit
   end
 
   private
@@ -141,13 +156,10 @@ class Msh
     save
   end
 
+  def edit
+    Process.spawn "xterm -e \"vim -f -c 'set filetype=mail' -c 'set spell' -c 'map s :w<CR>:! msh send<CR>:q<CR>' #{MESSAGE}\" " 
+  end
+
 end
 
-mail = Msh.new
-command = ARGV.shift
-begin
-  eval "mail.#{command}(#{ARGV.collect{|a| "\"#{a}\""}.join(',')})" 
-rescue => e
-  puts e.message
-end
-mail.db.close
+eval "Msh.new.#{ARGV.shift}(#{ARGV.collect{|a| "\"#{a}\""}.join(',')})" 

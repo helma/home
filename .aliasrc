@@ -14,7 +14,8 @@ alias desktop="ssh -p 104 desktop.in-silico.ch"
 alias toxcreate="ssh -p 106 toxcreate.org"
 alias ot-test="ssh -p 107 ot-test.in-silico.ch"
 alias sensitiv-dev="ssh -p 108 sensitiv-dev.in-silico.ch"
-alias ot-dev="ssh -p 111 ot-dev.in-silico.ch"
+alias ot-dev="ssh -p 105 ot-dev.in-silico.ch"
+alias ot-master="ssh -p 111 univac.in-silico.ch"
 alias sensitiv="ssh -p 110 sens-it-iv.org"
 
 alias curl-yaml="curl -H 'Accept:application/x-yaml'"
@@ -37,6 +38,7 @@ if [ `hostname` = 'zx81' ]; then
 
   w() { $BROWSER "$*" 2>/dev/null &! }
   alias f="firefox $1 2>/dev/null &!"
+  #alias landi=`$BROWSER http://landi.ch/meteo/deu/niederschlagsprognosen_32451.aspx &`
 
   alias audio-stop="killall mplayer"
   alias fm4="audio-stop; mplayer -playlist http://mp3stream1.apasf.apa.at:8000/listen.pls < /dev/null &> /dev/null &!"
@@ -74,15 +76,21 @@ if [ `hostname` = 'zx81' ]; then
   #alias m="msh"
 
   alias -s pdf=zathura
-  alias -s doc=ooffice
-  alias -s docx=ooffice
-  alias -s odt=ooffice
-  alias -s ppt=ooffice
-  alias -s pptx=ooffice
-  alias -s xls=ooffice
-  alias -s xlsx=ooffice
+  alias -s doc=libreoffice -writer
+  alias -s docx=libreoffice -writer
+  alias -s odt=libreoffice -writer
+  alias -s ppt=libreoffice -impress
+  alias -s pptx=libreoffice -impress
+  alias -s xls=libreoffice -calc
+  alias -s xlsx=libreoffice -calc
   alias -s png=display
-  alias -s html=$BROSER
+  alias -s html=$BROWSER
+
+  alias mplayer-identify "mplayer -vo null -ao null -frames 0 -identify"
+  mplayer2wav16bit() { 
+    out=`echo $1|sed 's/\(\..*\)$/16bit\1/'`
+    mplayer -ao pcm:fast:waveheader:file=$out -vo null -vc null -format s16le $1
+  }
 fi
 
 # Load server config
@@ -95,14 +103,34 @@ otupdate() {
   otconfig
   cd $HOME/opentox-ruby/www/opentox
   for d in `find -not -name "." -type d -maxdepth 1 2>/dev/null`; do echo $d ; cd $d ; git pull  ; echo ; cd - ;  done
+  cd  $HOME/opentox-ruby/www/opentox/algorithm/libfminer
+  mv libbbrc/Makefile libbbrc/Makefile~
+  mv liblast/Makefile liblast/Makefile~
+  if ! git pull; then
+    echo "Error! Pull for Fminer failed."
+    exit 1
+  fi
+  mv libbbrc/Makefile~ libbbrc/Makefile
+  mv liblast/Makefile~ liblast/Makefile
+  make -C libbbrc/ clean
+  make -C libbbrc/ ruby
+  make -C liblast/ clean
+  make -C liblast/ ruby
+  cd -
+  cd $HOME/opentox-ruby/www/opentox/algorithm/last-utils
+  if ! git pull; then
+    echo "Error! Pull for Last-Utils failed."
+    exit 1
+  fi
+  cd -
   cd opentox-ruby
   rake install
   LINK_DIR=`gem which opentox-ruby | sed 's/\/opentox-ruby.rb//'`
   if ! [ -h $LINK_DIR ]; then
     echo "Warning! Your lib $LINK_DIR is no symlink. Linking back for you..."
     rm -rf "$LINK_DIR~"
-    mv "$LINK_DIR" "$LINK_DIR~" >>$LOG 2>&1
-    ln -sf $HOME/opentox-ruby/www/opentox/opentox-ruby/lib $GEM_LIB
+    mv "$LINK_DIR" "$LINK_DIR~"
+    ln -sf $HOME/opentox-ruby/www/opentox/opentox-ruby/lib `echo ${LINK_DIR::${#LINK_DIR}-4}`
   fi
   echo "Please execute 'otstart' to restart."
 }

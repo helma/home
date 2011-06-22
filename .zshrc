@@ -1,5 +1,5 @@
 source $HOME/.aliasrc
-source $HOME/.opentox-ui.sh
+#source $HOME/.opentox-ui.sh
 
 if [ `hostname` = 'zx81' ]; then
   PROMPT="%F{green}%~%f%# "
@@ -27,8 +27,8 @@ unsetopt check_jobs
 unsetopt hup
 
 HISTFILE=$HOME/.zsh_history
-HISTSIZE=5000
-SAVEHIST=10000
+HISTSIZE=1000
+SAVEHIST=1000
 setopt append_history
 setopt share_history
 setopt histignorealldups
@@ -40,3 +40,12 @@ setopt extendedglob
 
 hash -d ot=~/opentox-ruby/www/opentox
 
+# define profiles based on directories:
+zstyle ':chpwd:profiles:/home/ch/opentox-ruby(|/|/*)' profile opentox
+
+# configuration for profile 'opentox':
+#chpwd_profile_opentox() { source $HOME/.opentox-ui.sh }
+chpwd_profile_opentox() {
+  [[ ${profile} == ${CHPWD_PROFILE} ]] && return 1
+    print "chpwd(): Switching to profile: $profile"
+  }
