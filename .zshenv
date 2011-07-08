@@ -1,9 +1,10 @@
-export PATH=$PATH:$HOME/bin:$HOME/bin/scc
+export PATH=$PATH:$HOME/bin:$HOME/bin/scc:/usr/bin/vendor_perl/
 #export JAVA_HOME=/usr/lib/jvm/java-6-sun
 export JAVA_HOME=/opt/java/
 #export BROWSER=/usr/local/bin/vimprobable
 #export BROWSER=/usr/bin/firefox
-export BROWSER=/usr/local/bin/surf
+#export BROWSER=/usr/local/bin/surf
+export BROWSER=$HOME/bin/br.rb
 export LESS=-IFXr
 export LD_LIBRARY_PATH=/usr/local/lib
 

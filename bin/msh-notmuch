@@ -129,7 +129,6 @@ class Msh
     FileUtils.cp MESSAGE, File.join(CACHE,"sent",`date`.chomp.gsub(/ /,'-'))
     File.open(File.join(CACHE,"send.err"), "a+"){|f| f.puts File.join(CACHE,"sent",`date`.chomp.gsub(/ /,'-')) }
     puts `ssmtp -t < #{MESSAGE} || echo "Mail not delivered!"|dmenu &`
-    #Process.spawn "ssmtp -v -t < #{MESSAGE} ", [:out, :err]=> [File.join(CACHE,"send.err"), "a+"]
   end
 
   def compose

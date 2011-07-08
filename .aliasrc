@@ -16,6 +16,7 @@ alias ot-test="ssh -p 107 ot-test.in-silico.ch"
 alias sensitiv-dev="ssh -p 108 sensitiv-dev.in-silico.ch"
 alias ot-dev="ssh -p 105 ot-dev.in-silico.ch"
 alias ot-master="ssh -p 111 univac.in-silico.ch"
+alias ch-test="ssh -p 114 univac.in-silico.ch"
 alias sensitiv="ssh -p 110 sens-it-iv.org"
 
 alias curl-yaml="curl -H 'Accept:application/x-yaml'"
@@ -31,15 +32,17 @@ alias rgrep="grep -r --include=*rb"
 
 if [ `hostname` = 'zx81' ]; then
 
+  #alias wb="sed -i 's/true/false/' $HOME/.Xdefaults"
+  #alias bw="sed -i 's/false/true/' $HOME/.Xdefaults"
   alias wicd="wicd-curses"
   alias win="VBoxManage startvm windows"
 
-  alias sr="surfraw -browser=$BROWSER"
+  #alias sr="surfraw -browser=$BROWSER"
 
-  w() { $BROWSER "$*" 2>/dev/null &! }
+  b() { $BROWSER "$*" &>>$HOME/.br/log &! }
   alias f="firefox $1 2>/dev/null &!"
   #alias landi=`$BROWSER http://landi.ch/meteo/deu/niederschlagsprognosen_32451.aspx &`
-
+  alias chf="$BROWSER http://www.ecb.int/stats/exchange/eurofxref/html/eurofxref-graph-chf.en.html"
   alias audio-stop="killall mplayer"
   alias fm4="audio-stop; mplayer -playlist http://mp3stream1.apasf.apa.at:8000/listen.pls < /dev/null &> /dev/null &!"
   alias fm4-usb="mplayer -playlist http://mp3stream1.apasf.apa.at:8000/listen.pls -ao alsa:device=hw=1.0"
@@ -48,14 +51,13 @@ if [ `hostname` = 'zx81' ]; then
   alias radio1x="audio-stop; mplayer -playlist http://www.bbc.co.uk/radio/listen/live/r1x.asx < /dev/null &> /dev/null &!"
 
   alias t="task"
-  alias untagged="task long `task tags|sed  '1,2d;/^$/,$d'|cut -f1 -d ' '|sed  's/\(.*\)/-\1/'|tr "\n" " "` pro:"
+  alias untagged="task long `task tags|sed  '1,2d;/^$/,$d'|cut -f1 -d ' '|sed  's/\(.*\)/-\1/'|tr "\n" " "` pro: pri: "
   alias today="task long due:today; task overdue; task long pri:H"
   alias week="task long due:eow; task overdue; task long pri:H; task long pri:M"
   alias next="task long due:eom; task overdue; task long pri:M; task long pri:L"
 
   # mail
   v() { less =(msh view "$*") }
-  #alias v="msh view"
   alias m="msh compose"
   alias a="msh mv Archive"
   alias p="msh mv Pending"
@@ -65,13 +67,8 @@ if [ `hostname` = 'zx81' ]; then
   alias r="msh reply"
   alias I="msh cd INBOX"
   alias P="msh cd Pending"
-  #alias I="msh cd INBOX && msh ls"
-  #alias P="msh cd Pending && msh ls"
   alias S="msh search"
-  #S() { less =(msh cd Archive; msh search "$*") }
-  #alias L="less =(msh ll)"
   alias L="msh ls"
-  #alias mj="msh cd Junkmail && msh ls"
 
   #alias m="msh"
 

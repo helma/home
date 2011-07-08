@@ -1,6 +1,7 @@
 set makeprg=rake
 filetype on  " Automatically detect file types.
 set nocompatible  " We don't want vi compatibility.
+set background=dark
 syntax enable
 filetype plugin indent on
 au BufNewFile,BufRead *.t2t set ft=txt2tags
@@ -11,3 +12,5 @@ set autoindent
 set smarttab
 set expandtab
 set spelllang=en,de
+set incsearch
+set hlsearch
