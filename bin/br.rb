@@ -1,5 +1,4 @@
 #!/usr/bin/env ruby
-# TODO: cookies, download
 require 'webkit'
 require 'yaml'
 
@@ -40,7 +39,8 @@ wv = Gtk::WebKit::WebView.new
 wv.settings.enable_page_cache=true
 sw.add wv
 win = Gtk::Window.new
-win.border_width = 1
+#sw.scrollbar.style.xthickness = 0
+#win.ythickness = 0
 win.add(sw)
 =begin
 wv.signal_connect("mime-type-policy-decision-requested") do |w,f,r,m,policy|
@@ -51,6 +51,15 @@ wv.signal_connect("mime-type-policy-decision-requested") do |w,f,r,m,policy|
   #puts policy.inspect
 end
 =end
+wv.signal_connect("console-message") do |w,message|
+  #puts message
+  case message
+  when "insertmode_on"
+    insert = true
+  when "insertmode_off"
+    insert = false
+  end
+end
 wv.signal_connect("download-requested") do |w,download|
   file = download.suggested_filename
   file = "br_download" if file.empty?
@@ -63,15 +72,22 @@ wv.signal_connect("document-load-finished") do |w|
   insert = false
   last = `tail -n 1 #{history}`.chomp
   if wv.get_uri =~ /^https:\/\// 
+    win.border_width = 2
     win.modify_bg(Gtk::STATE_NORMAL,Gdk::Color.parse("green"))
   else
-    win.modify_bg(Gtk::STATE_NORMAL,Gdk::Color.parse("red"))
+    win.border_width = 0
+    win.modify_bg(Gtk::STATE_NORMAL,Gdk::Color.parse("grey"))
   end
+  wv.execute_script(File.read(File.join(File.dirname(__FILE__),"input-focus.js")))
+  wv.execute_script(File.read(File.join(File.dirname(__FILE__),"hinting.js")))
   File.open(history, "a+"){|f| f.puts wv.get_uri} if wv.get_uri and !wv.get_uri.empty? and wv.get_uri != last
 end
 
+wv.signal_connect("title-changed") do |w,f,title|
+  insert = true if title == "insert"
+end
+
 win.signal_connect("key-press-event") do |w,e|
-  wv.execute_script("document.activeElement;")
   if Gdk::Keyval.to_name(e.keyval) == "Escape"
     insert = false
     wv.stop_loading
@@ -97,10 +113,10 @@ win.signal_connect("key-press-event") do |w,e|
       sw.vadjustment.value = [0,sw.vadjustment.value - sw.vadjustment.step_increment].max
     when "s"
       Process.spawn("wget -O /tmp/br-source.html #{wv.get_uri} && xterm -e \"vim -c 'set filetype=html' /tmp/br-source.html\" &")
-    when "f"
-      wv.execute_script(File.read(File.join(File.dirname(__FILE__),"link-hinting.js"))+"\nhintMode();")
-    when "F"
-      wv.execute_script(File.read(File.join(File.dirname(__FILE__),"link-hinting.js"))+"\nhintMode(true);")
+#    when "f"
+#      wv.execute_script(File.read(File.join(File.dirname(__FILE__),"hinting.js"))+"\nhintMode();")
+#    when "F"
+#      wv.execute_script(File.read(File.join(File.dirname(__FILE__),"hinting.js"))+"\nhintMode(true);")
     when "i"
       insert = true
     when "r"
@@ -111,7 +127,7 @@ win.signal_connect("key-press-event") do |w,e|
     when "p"
       wv.open full_uri(clipboard.wait_for_text)
     when "o"
-      wv.open full_uri(`uniq -c #{history}|sort -nr| grep -v "^ \+1 "|sed 's/^ *[0-9]* //'|dmenu -b -l 10`)
+      wv.open full_uri(`sort #{history}|uniq -c |sort -nr| grep -v "^ \+1 "|sed 's/^ *[0-9]* //'|dmenu -b -l 10`)
     when "h"
       wv.go_back
     when "l"
@@ -127,9 +143,17 @@ win.signal_connect("key-press-event") do |w,e|
       #wv.load_html_string(Gdk::Keyval.to_name(e.keyval), "file:///")
     end
   end
+  #if insert
+    #win.border_width = 2
+    #win.modify_bg(Gtk::STATE_NORMAL,Gdk::Color.parse("yellow"))
+  #end
 end
 win.signal_connect("destroy") { Gtk.main_quit }
 
-wv.open full_uri(ARGV)
+if ARGV.empty?
+  wv.load_html_string(ARGF.read)
+else
+  wv.open full_uri(ARGV)
+end
 win.show_all
 Gtk.main
