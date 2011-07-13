@@ -37,55 +37,11 @@ clipboard = Gtk::Clipboard.get(Gdk::Selection::CLIPBOARD)
 sw = Gtk::ScrolledWindow.new(nil, nil)
 wv = Gtk::WebKit::WebView.new
 wv.settings.enable_page_cache=true
+#puts wv.public_methods.grep(/signal/).sort.inspect
+#puts wv.settings.publicmethods.sort.inspect
 sw.add wv
 win = Gtk::Window.new
-#sw.scrollbar.style.xthickness = 0
-#win.ythickness = 0
 win.add(sw)
-=begin
-wv.signal_connect("mime-type-policy-decision-requested") do |w,f,r,m,policy|
-  puts "=="
-[w,f,r,m,policy].each{|o| puts o.class; puts o.inspect}
-  #policy.use
-  #puts policy.class
-  #puts policy.inspect
-end
-=end
-wv.signal_connect("console-message") do |w,message|
-  #puts message
-  case message
-  when "insertmode_on"
-    insert = true
-  when "insertmode_off"
-    insert = false
-  end
-end
-wv.signal_connect("download-requested") do |w,download|
-  file = download.suggested_filename
-  file = "br_download" if file.empty?
-  download.set_destination_uri(File.join("file://",ENV['HOME'],file))
-end
-wv.signal_connect("create-web-view") do |w,f,d| 
-  wv.open wv.get_uri # do not open a new window
-end
-wv.signal_connect("document-load-finished") do |w|
-  insert = false
-  last = `tail -n 1 #{history}`.chomp
-  if wv.get_uri =~ /^https:\/\// 
-    win.border_width = 2
-    win.modify_bg(Gtk::STATE_NORMAL,Gdk::Color.parse("green"))
-  else
-    win.border_width = 0
-    win.modify_bg(Gtk::STATE_NORMAL,Gdk::Color.parse("grey"))
-  end
-  wv.execute_script(File.read(File.join(File.dirname(__FILE__),"input-focus.js")))
-  wv.execute_script(File.read(File.join(File.dirname(__FILE__),"hinting.js")))
-  File.open(history, "a+"){|f| f.puts wv.get_uri} if wv.get_uri and !wv.get_uri.empty? and wv.get_uri != last
-end
-
-wv.signal_connect("title-changed") do |w,f,title|
-  insert = true if title == "insert"
-end
 
 win.signal_connect("key-press-event") do |w,e|
   if Gdk::Keyval.to_name(e.keyval) == "Escape"
@@ -113,10 +69,10 @@ win.signal_connect("key-press-event") do |w,e|
       sw.vadjustment.value = [0,sw.vadjustment.value - sw.vadjustment.step_increment].max
     when "s"
       Process.spawn("wget -O /tmp/br-source.html #{wv.get_uri} && xterm -e \"vim -c 'set filetype=html' /tmp/br-source.html\" &")
-#    when "f"
-#      wv.execute_script(File.read(File.join(File.dirname(__FILE__),"hinting.js"))+"\nhintMode();")
-#    when "F"
-#      wv.execute_script(File.read(File.join(File.dirname(__FILE__),"hinting.js"))+"\nhintMode(true);")
+    when "f"
+      wv.execute_script(File.read(File.join(File.dirname(__FILE__),"link-hinting.js"))+"\nhintMode();")
+    when "F"
+      wv.execute_script(File.read(File.join(File.dirname(__FILE__),"link-hinting.js"))+"\nhintMode(true);")
     when "i"
       insert = true
     when "r"
@@ -148,7 +104,53 @@ win.signal_connect("key-press-event") do |w,e|
     #win.modify_bg(Gtk::STATE_NORMAL,Gdk::Color.parse("yellow"))
   #end
 end
+
 win.signal_connect("destroy") { Gtk.main_quit }
+
+# receive javascript messages (borrowed from vimpropable)
+wv.signal_connect("console-message") do |w,message|
+  case message
+  when "insertmode_on"
+    insert = true
+  when "insertmode_off"
+    insert = false
+  end
+end
+
+wv.signal_connect("download-requested") do |w,download|
+  file = download.suggested_filename
+  file = "br_download" if file.empty?
+  download.set_destination_uri(File.join("file://",ENV['HOME'],file))
+end
+
+wv.signal_connect("create-web-view") do |w,f,d| 
+  wv.open wv.get_uri # do not open a new window
+end
+
+wv.signal_connect("document-load-finished") do |w|
+  insert = false
+  last = `tail -n 1 #{history}`.chomp
+  if wv.get_uri =~ /^https:\/\// 
+    win.border_width = 2
+    win.modify_bg(Gtk::STATE_NORMAL,Gdk::Color.parse("green"))
+  else 
+    win.border_width = 0
+    win.modify_bg(Gtk::STATE_NORMAL,Gdk::Color.parse("grey"))
+  end
+  wv.execute_script(File.read(File.join(File.dirname(__FILE__),"input-focus.js")))
+  File.open(history, "a+"){|f| f.puts wv.get_uri} if wv.get_uri and !wv.get_uri.empty? and wv.get_uri != last
+end
+
+wv.signal_connect("mime-type-policy-decision-requested") do |w,f,r,mime,decision|
+  if mime =~ /html/
+    false
+  else
+    `cd $HOME && wget #{r.uri}`
+    Process.spawn("zathura #{File.join(ENV["HOME"],File.basename(r.uri))}") if mime =~ /pdf/
+    wv.open wv.get_uri # do not open a new window
+    true
+  end
+end
 
 if ARGV.empty?
   wv.load_html_string(ARGF.read)
