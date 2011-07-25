@@ -44,10 +44,12 @@ class Msh
 
   def ls
     @index.each do |m|
+      text = "%-5s%-22s%-25.25s    " % [@index.index(m),m[:date] ,m[:from]]
+      text += m[:subject] # allow '%' in subject
       if @index.index(m) == @id
-        puts "%-5s%-22s%-25.25s    #{m[:subject]}".yellow % [@index.index(m),m[:date] ,m[:from]]
+        puts text.yellow
       else
-        puts "%-5s%-22s%-25.25s    #{m[:subject]}" % [@index.index(m),m[:date] ,m[:from]]
+        puts text
       end
     end
   end

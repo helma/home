@@ -19,6 +19,11 @@ autoload -Uz compinit
 compinit
 zstyle ':completion:*' verbose yes
 zstyle ':completion:*' list-colors ''
+zstyle ':completion:descriptions' format '%B%d%b'
+zstyle ':completion:messages' format '%d'
+zstyle ':completion:warnings' format 'No matches for: %d'
+zstyle ':completion:*' group-name ''
+
 unsetopt COMPLETE_ALIASES
 
 setopt autocd
@@ -37,6 +42,8 @@ bindkey -M viins '^r' history-incremental-search-backward
 bindkey -M vicmd '^r' history-incremental-search-backward
 
 setopt extendedglob
+setopt nobeep
+setopt correct
 
 hash -d ot=~/opentox-ruby/www/opentox
 

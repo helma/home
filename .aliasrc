@@ -75,6 +75,7 @@ if [ `hostname` = 'zx81' ]; then
   alias -s pdf=zathura
   alias -s doc=libreoffice -writer
   alias -s docx=libreoffice -writer
+  alias -s docm=libreoffice -writer
   alias -s odt=libreoffice -writer
   alias -s ppt=libreoffice -impress
   alias -s pptx=libreoffice -impress
@@ -88,6 +89,8 @@ if [ `hostname` = 'zx81' ]; then
     out=`echo $1|sed 's/\(\..*\)$/16bit\1/'`
     mplayer -ao pcm:fast:waveheader:file=$out -vo null -vc null -format s16le $1
   }
+
+  alias scan="scanimage|convert pnm:-"
 fi
 
 # Load server config

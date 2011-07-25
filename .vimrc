@@ -14,3 +14,4 @@ set expandtab
 set spelllang=en,de
 set incsearch
 set hlsearch
+so /usr/local/share/scvim/scvimrc

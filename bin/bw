@@ -1,0 +1,5 @@
+#!/bin/sh
+
+sed -i 's/false/true/' $HOME/.Xdefaults
+sed -i 's/light-256/dark-256/' $HOME/.taskrc
+sed -i 's/background=light/background=dark/' $HOME/.vimrc

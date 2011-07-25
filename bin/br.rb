@@ -8,7 +8,8 @@ history = File.join(ENV['HOME'],".br","history")
 bookmark = File.join(ENV['HOME'],".br","bookmark")
 
 def full_uri(args)
-  searchengine="http://www.google.com/search?q="
+  #searchengine="http://www.google.com/search?q="
+  searchengine="https://encrypted.google.com/search?q="
   #searchengine="http://www.google.com/webhp?hl=all&q="
   #searchengine = "http://ixquick.com/do/metasearch.pl?query="
   #searchengine = "https://ssl.scroogle.org/cgi-bin/nbbwssl.cgi?Gw="
@@ -37,8 +38,6 @@ clipboard = Gtk::Clipboard.get(Gdk::Selection::CLIPBOARD)
 sw = Gtk::ScrolledWindow.new(nil, nil)
 wv = Gtk::WebKit::WebView.new
 wv.settings.enable_page_cache=true
-#puts wv.public_methods.grep(/signal/).sort.inspect
-#puts wv.settings.publicmethods.sort.inspect
 sw.add wv
 win = Gtk::Window.new
 win.add(sw)
@@ -50,9 +49,6 @@ win.signal_connect("key-press-event") do |w,e|
   end
   unless insert
     case Gdk::Keyval.to_name(e.keyval)
-    when "d"
-      #`wget #{wv.get_uri} $HOME/`
-    ######
     when "b"
       wv.open File.read(bookmark).chomp# unless bookmark.empty?
     when "m"
